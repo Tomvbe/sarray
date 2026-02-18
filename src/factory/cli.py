@@ -60,6 +60,7 @@ def cmd_chat(config_path: Path, message: Optional[str], session_id: Optional[str
     try:
         if session_id:
             state = load_session(sessions_dir, session_id)
+            print(f"Resumed session: {state.session_id}")
         else:
             state = SessionState.new()
     except SessionError as exc:
@@ -72,28 +73,37 @@ def cmd_chat(config_path: Path, message: Optional[str], session_id: Optional[str
 
     if message is not None:
         _handle_turn(message, state, sessions_dir, logger)
+        print(f"Session saved: {state.session_id}")
         return 0
 
     print("Type 'exit' to quit.")
-    while True:
-        user_text = input("you> ")
-        if user_text.strip().lower() in {"exit", "quit"}:
-            state.save(sessions_dir)
-            break
-        _handle_turn(user_text, state, sessions_dir, logger)
+    try:
+        while True:
+            user_text = input("you> ")
+            if user_text.strip().lower() in {"exit", "quit"}:
+                state.save(sessions_dir)
+                break
+            _handle_turn(user_text, state, sessions_dir, logger)
+    except (KeyboardInterrupt, EOFError):
+        state.save(sessions_dir)
+        print()
 
+    print(f"Session saved: {state.session_id}")
+    print(f"Resume with: factory --session-id {state.session_id}")
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="factory", description="AI Software Factory CLI")
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    parser.add_argument("--config", "-c", default="configs/factory.toml")
+    parser.add_argument("--session-id")
+    subparsers = parser.add_subparsers(dest="command")
 
     status_parser = subparsers.add_parser("status", help="Show baseline app status")
-    status_parser.add_argument("--config", "-c", default="configs/factory.toml")
+    status_parser.add_argument("--config", "-c")
 
     chat_parser = subparsers.add_parser("chat", help="Run baseline Analyst chat loop")
-    chat_parser.add_argument("--config", "-c", default="configs/factory.toml")
+    chat_parser.add_argument("--config", "-c")
     chat_parser.add_argument("--message", "-m")
     chat_parser.add_argument("--session-id")
 
@@ -104,12 +114,17 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    config_path = Path(args.config)
+    config_value = args.config or "configs/factory.toml"
+    config_path = Path(config_value)
 
     if args.command == "status":
         return cmd_status(config_path)
     if args.command == "chat":
-        return cmd_chat(config_path, args.message, args.session_id)
+        session_id = args.session_id or getattr(args, "session_id", None)
+        return cmd_chat(config_path, args.message, session_id)
+    if args.command is None:
+        session_id = getattr(args, "session_id", None)
+        return cmd_chat(config_path, None, session_id)
 
     parser.print_help()
     return 1
