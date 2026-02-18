@@ -14,6 +14,21 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ### Fixed
 - Placeholder for upcoming changes.
 
+## [0.1.2] - 2026-02-18
+### Added
+- `starray init` command to bootstrap user config at `~/.config/starray/starray.toml` (or XDG path).
+- Config resolution order support: CLI flag, env var, user config, repo fallback.
+- Tests for CLI config resolution and init bootstrap.
+
+### Changed
+- `status` output now shows the active config path.
+- Install script now targets package name `starray-cli` and prefers Python 3.13 for pipx install/upgrade.
+- Documentation now clearly distinguishes package name (`starray-cli`) from executable (`starray`).
+
+### Fixed
+- Global pipx installs now work outside the repo without requiring `configs/starray.toml` in the current directory.
+- Missing config error now includes actionable next step (`starray init`).
+
 ## [0.1.1] - 2026-02-18
 ### Added
 - Phase 0 CLI scaffold (`status`, `chat`, session persistence, logs).

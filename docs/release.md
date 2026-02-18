@@ -1,7 +1,7 @@
 # Release Playbook
 
 ## One-time Setup
-1. Create a PyPI project named `starray`.
+1. Create a PyPI project named `starray-cli`.
 2. In GitHub repository settings, add secret `PYPI_API_TOKEN`.
 3. Replace placeholder links in `pyproject.toml` `[project.urls]`.
 
@@ -19,7 +19,8 @@
    - `Publish` workflow uploads to PyPI.
 8. Verify install in clean shell:
    - `pipx install starray-cli`
-   - `starray-cli --version`
+   - `starray --version`
+   - `starray init`
 
 ## Rollback
 1. Yank bad release from PyPI.

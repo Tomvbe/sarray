@@ -33,22 +33,92 @@ class Ui:
 
 
 ui = Ui()
+APP_NAME = "starray"
+ENV_CONFIG = "STARRAY_CONFIG"
+CONFIG_FILENAME = "starray.toml"
 
 
 def _resolve_storage_paths(cfg: AppConfig) -> tuple[Path, Path]:
-    session_dir = cfg.data_dir / "sessions"
-    log_dir = cfg.data_dir / "logs"
+    data_dir = cfg.data_dir.expanduser()
+    session_dir = data_dir / "sessions"
+    log_dir = data_dir / "logs"
     return session_dir, log_dir
+
+
+def _user_config_path() -> Path:
+    xdg_config_home = os.getenv("XDG_CONFIG_HOME")
+    base = Path(xdg_config_home).expanduser() if xdg_config_home else Path.home() / ".config"
+    return base / APP_NAME / CONFIG_FILENAME
+
+
+def _user_state_path() -> Path:
+    xdg_state_home = os.getenv("XDG_STATE_HOME")
+    base = Path(xdg_state_home).expanduser() if xdg_state_home else Path.home() / ".local" / "state"
+    return base / APP_NAME
+
+
+def _project_config_path() -> Path:
+    return Path("configs") / CONFIG_FILENAME
+
+
+def _resolve_config_path(cli_config: Optional[str]) -> Path:
+    if cli_config:
+        return Path(cli_config).expanduser()
+    env_config = os.getenv(ENV_CONFIG)
+    if env_config:
+        return Path(env_config).expanduser()
+    user_config = _user_config_path()
+    if user_config.exists():
+        return user_config
+    project_config = _project_config_path()
+    if project_config.exists():
+        return project_config
+    return user_config
+
+
+def _resolve_init_config_path(cli_config: Optional[str]) -> Path:
+    if cli_config:
+        return Path(cli_config).expanduser()
+    env_config = os.getenv(ENV_CONFIG)
+    if env_config:
+        return Path(env_config).expanduser()
+    return _user_config_path()
+
+
+def _default_config_text() -> str:
+    state_dir = _user_state_path().as_posix()
+    return f"""[provider]
+name = "openai"
+default_model = "gpt-4.1"
+
+[provider.role_models]
+analyst = "gpt-4.1"
+planner = "gpt-4.1-mini"
+architect = "gpt-4.1"
+implementer = "gpt-4.1"
+tester = "gpt-4.1-mini"
+security = "gpt-4.1"
+
+[storage]
+data_dir = "{state_dir}"
+"""
+
+
+def _print_config_error(exc: ConfigError, config_path: Path) -> int:
+    print(ui.c(str(exc), Ui.RED))
+    if config_path == _user_config_path():
+        print(ui.c("No user config found. Run: starray init", Ui.YELLOW))
+    return 1
 
 
 def cmd_status(config_path: Path) -> int:
     try:
         cfg = load_config(config_path)
     except ConfigError as exc:
-        print(ui.c(str(exc), Ui.RED))
-        return 1
+        return _print_config_error(exc, config_path)
 
     print(ui.c("Starray status: ready", Ui.BOLD, Ui.GREEN))
+    print(f"{ui.c('Config:', Ui.CYAN)} {config_path}")
     print(f"{ui.c('Provider:', Ui.CYAN)} {cfg.provider}")
     print(f"{ui.c('Default model:', Ui.CYAN)} {cfg.default_model}")
     print(f"{ui.c('Data dir:', Ui.CYAN)} {cfg.data_dir}")
@@ -102,8 +172,7 @@ def cmd_chat(config_path: Path, message: Optional[str], session_id: Optional[str
     try:
         cfg = load_config(config_path)
     except ConfigError as exc:
-        print(ui.c(str(exc), Ui.RED))
-        return 1
+        return _print_config_error(exc, config_path)
 
     sessions_dir, logs_dir = _resolve_storage_paths(cfg)
 
@@ -156,20 +225,38 @@ def cmd_chat(config_path: Path, message: Optional[str], session_id: Optional[str
     return 0
 
 
+def cmd_init(config_path: Path, force: bool) -> int:
+    config_path = config_path.expanduser()
+    if config_path.exists() and not force:
+        print(ui.c(f"Config already exists: {config_path}", Ui.YELLOW))
+        print(ui.c("Use --force to overwrite.", Ui.DIM))
+        return 1
+
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(_default_config_text(), encoding="utf-8")
+    print(ui.c(f"Created config: {config_path}", Ui.GREEN))
+    print(ui.c("Start chat with: starray", Ui.DIM))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="starray", description="Starray CLI")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
-    parser.add_argument("--config", "-c", default="configs/starray.toml")
+    parser.add_argument("--config", "-c")
     parser.add_argument("--session-id")
     subparsers = parser.add_subparsers(dest="command")
 
     status_parser = subparsers.add_parser("status", help="Show baseline app status")
-    status_parser.add_argument("--config", "-c")
+    status_parser.add_argument("--config", "-c", dest="sub_config")
 
     chat_parser = subparsers.add_parser("chat", help="Run baseline Analyst chat loop")
-    chat_parser.add_argument("--config", "-c")
+    chat_parser.add_argument("--config", "-c", dest="sub_config")
     chat_parser.add_argument("--message", "-m")
-    chat_parser.add_argument("--session-id")
+    chat_parser.add_argument("--session-id", dest="sub_session_id")
+
+    init_parser = subparsers.add_parser("init", help="Create a user config file")
+    init_parser.add_argument("--config", "-c", dest="sub_config")
+    init_parser.add_argument("--force", action="store_true")
 
     return parser
 
@@ -178,14 +265,19 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    config_value = args.config or "configs/starray.toml"
-    config_path = Path(config_value)
+    config_value = getattr(args, "sub_config", None) or args.config
+    if args.command == "init":
+        config_path = _resolve_init_config_path(config_value)
+    else:
+        config_path = _resolve_config_path(config_value)
 
     if args.command == "status":
         return cmd_status(config_path)
     if args.command == "chat":
-        session_id = args.session_id or getattr(args, "session_id", None)
+        session_id = getattr(args, "sub_session_id", None) or args.session_id
         return cmd_chat(config_path, args.message, session_id)
+    if args.command == "init":
+        return cmd_init(config_path, args.force)
     if args.command is None:
         session_id = getattr(args, "session_id", None)
         return cmd_chat(config_path, None, session_id)

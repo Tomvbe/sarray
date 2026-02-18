@@ -17,6 +17,7 @@ Phase 0 provides the baseline scaffolding for a Starray CLI:
 - `configs/starray.toml`: provider and role model mapping.
 - `.starray/sessions/*.json`: serialized session transcripts.
 - `.starray/logs/*.log`: per-session operational logs.
+- User-global config: `~/.config/starray/starray.toml` (or `$XDG_CONFIG_HOME/starray/starray.toml`).
 
 ## Constraints in Phase 0
 - Only one visible persona (Analyst).

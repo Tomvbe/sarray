@@ -1,12 +1,13 @@
 # Starray
 
-Phase 0 baseline scaffold for a CLI-first Starray.
+Phase 0 baseline scaffold for a CLI-first StarRay.
 
 ## Install
 
 ```bash
-pipx install starray
+pipx install --python 3.13 starray-cli
 starray --version
+starray init
 ```
 
 If you prefer source install:
@@ -36,6 +37,15 @@ starray chat --session-id <session_id>
   - `starray --session-id <session_id>` (interactive default)
   - `starray chat --session-id <session_id>`
 
+## Config Resolution
+Order of precedence:
+1. `--config <path>`
+2. `STARRAY_CONFIG` environment variable
+3. `~/.config/starray/starray.toml` (or `$XDG_CONFIG_HOME/starray/starray.toml`)
+4. `./configs/starray.toml` (repo-local fallback)
+
+If no config exists, run `starray init`.
+
 ## Interactive Commands
 - `/status`: show active provider/model.
 - `/session`: show current session id.
@@ -44,7 +54,7 @@ starray chat --session-id <session_id>
 
 ## Release
 - CI runs on pushes/PRs via `.github/workflows/ci.yml`.
-- Publishing runs on tags like `v0.1.1` via `.github/workflows/publish.yml`.
+- Publishing runs on tags like `v0.1.2` via `.github/workflows/publish.yml`.
 - PyPI publishing uses repository secret `PYPI_API_TOKEN`.
 - A helper installer script is available at `scripts/install.sh`.
 
