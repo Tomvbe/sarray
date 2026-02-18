@@ -27,6 +27,12 @@ factory chat --session-id <session_id>
   - `factory --session-id <session_id>` (interactive default)
   - `factory chat --session-id <session_id>`
 
+## Interactive Commands
+- `/status`: show active provider/model.
+- `/session`: show current session id.
+- `/help`: show available chat commands.
+- `exit` or `quit`: save and exit.
+
 ## Layout
 - `src/factory/`: CLI, config, logging, session primitives
 - `configs/factory.toml`: provider/model configuration

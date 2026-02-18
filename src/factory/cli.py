@@ -1,12 +1,37 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
+import sys
 from typing import Optional
 
 from .config import AppConfig, ConfigError, load_config
 from .logging_utils import build_session_logger
 from .session import SessionState, SessionError, load_session
+
+
+class Ui:
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    DIM = "\033[2m"
+    CYAN = "\033[36m"
+    GREEN = "\033[32m"
+    YELLOW = "\033[33m"
+    MAGENTA = "\033[35m"
+    RED = "\033[31m"
+    BLUE = "\033[34m"
+
+    def __init__(self) -> None:
+        self.use_color = sys.stdout.isatty() and os.getenv("NO_COLOR") is None
+
+    def c(self, text: str, *styles: str) -> str:
+        if not self.use_color:
+            return text
+        return "".join(styles) + text + self.RESET
+
+
+ui = Ui()
 
 
 def _resolve_storage_paths(cfg: AppConfig) -> tuple[Path, Path]:
@@ -19,13 +44,13 @@ def cmd_status(config_path: Path) -> int:
     try:
         cfg = load_config(config_path)
     except ConfigError as exc:
-        print(str(exc))
+        print(ui.c(str(exc), Ui.RED))
         return 1
 
-    print("Factory status: ready")
-    print(f"Provider: {cfg.provider}")
-    print(f"Default model: {cfg.default_model}")
-    print(f"Data dir: {cfg.data_dir}")
+    print(ui.c("Factory status: ready", Ui.BOLD, Ui.GREEN))
+    print(f"{ui.c('Provider:', Ui.CYAN)} {cfg.provider}")
+    print(f"{ui.c('Default model:', Ui.CYAN)} {cfg.default_model}")
+    print(f"{ui.c('Data dir:', Ui.CYAN)} {cfg.data_dir}")
     return 0
 
 
@@ -45,14 +70,38 @@ def _handle_turn(
     logger.info("user=%s", user_text)
     logger.info("analyst=%s", analyst_reply)
     state.save(sessions_dir)
-    print(analyst_reply)
+    print(
+        f"{ui.c('┌─ Analyst', Ui.BOLD, Ui.MAGENTA)}\n"
+        f"{ui.c('│', Ui.MAGENTA)} {analyst_reply}\n"
+        f"{ui.c('└────────', Ui.MAGENTA)}"
+    )
+
+
+def _print_intro(cfg: AppConfig, session_id: str) -> None:
+    print(ui.c("╔══════════════════════════════════════════════════════╗", Ui.BLUE))
+    print(ui.c("║               AI Software Factory CLI               ║", Ui.BOLD, Ui.BLUE))
+    print(ui.c("╚══════════════════════════════════════════════════════╝", Ui.BLUE))
+    print(
+        f"{ui.c('Analyst', Ui.BOLD, Ui.MAGENTA)} is active. Hidden specialist agents are offline in Phase 0."
+    )
+    print(
+        f"{ui.c('Provider:', Ui.CYAN)} {cfg.provider}   "
+        f"{ui.c('Model:', Ui.CYAN)} {cfg.default_model}   "
+        f"{ui.c('Session:', Ui.CYAN)} {session_id}"
+    )
+    print(
+        ui.c(
+            "Commands: /help, /session, /status, exit",
+            Ui.DIM,
+        )
+    )
 
 
 def cmd_chat(config_path: Path, message: Optional[str], session_id: Optional[str]) -> int:
     try:
         cfg = load_config(config_path)
     except ConfigError as exc:
-        print(str(exc))
+        print(ui.c(str(exc), Ui.RED))
         return 1
 
     sessions_dir, logs_dir = _resolve_storage_paths(cfg)
@@ -60,36 +109,49 @@ def cmd_chat(config_path: Path, message: Optional[str], session_id: Optional[str
     try:
         if session_id:
             state = load_session(sessions_dir, session_id)
-            print(f"Resumed session: {state.session_id}")
+            print(ui.c(f"Resumed session: {state.session_id}", Ui.YELLOW))
         else:
             state = SessionState.new()
     except SessionError as exc:
-        print(str(exc))
+        print(ui.c(str(exc), Ui.RED))
         return 1
 
     logger = build_session_logger(logs_dir, state.session_id)
 
-    print(f"Session: {state.session_id}")
+    _print_intro(cfg, state.session_id)
 
     if message is not None:
         _handle_turn(message, state, sessions_dir, logger)
-        print(f"Session saved: {state.session_id}")
+        print(ui.c(f"Session saved: {state.session_id}", Ui.GREEN))
         return 0
 
-    print("Type 'exit' to quit.")
+    print(ui.c("Type 'exit' to quit.", Ui.DIM))
     try:
         while True:
-            user_text = input("you> ")
+            print(ui.c("┌─ Input", Ui.BOLD, Ui.CYAN))
+            user_text = input(ui.c("│ ", Ui.CYAN))
             if user_text.strip().lower() in {"exit", "quit"}:
                 state.save(sessions_dir)
                 break
+            if user_text.strip() == "/help":
+                print(ui.c("Commands: /help, /session, /status, exit", Ui.DIM))
+                continue
+            if user_text.strip() == "/session":
+                print(ui.c(f"Current session: {state.session_id}", Ui.YELLOW))
+                continue
+            if user_text.strip() == "/status":
+                print(
+                    f"{ui.c('Provider:', Ui.CYAN)} {cfg.provider}   "
+                    f"{ui.c('Model:', Ui.CYAN)} {cfg.default_model}"
+                )
+                continue
             _handle_turn(user_text, state, sessions_dir, logger)
     except (KeyboardInterrupt, EOFError):
         state.save(sessions_dir)
         print()
 
-    print(f"Session saved: {state.session_id}")
-    print(f"Resume with: factory --session-id {state.session_id}")
+    print(ui.c(f"Session saved: {state.session_id}", Ui.GREEN))
+    print(ui.c(f"Resume with: factory --session-id {state.session_id}", Ui.YELLOW))
     return 0
 
 
