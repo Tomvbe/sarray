@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "starray"
+name = "starray-cli"
 version = "0.1.0"
 description = "CLI-first Starray"
 readme = "README.md"

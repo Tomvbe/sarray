@@ -18,8 +18,8 @@
    - `CI` workflow passes.
    - `Publish` workflow uploads to PyPI.
 8. Verify install in clean shell:
-   - `pipx install starray`
-   - `starray --version`
+   - `pipx install starray-cli`
+   - `starray-cli --version`
 
 ## Rollback
 1. Yank bad release from PyPI.
