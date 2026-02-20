@@ -18,9 +18,13 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Updated default and checked-in config templates with Phase 1 provider routing fields.
 - Updated docs to describe provider routing, LiteLLM setup, and `/provider` command usage.
 - Updated CLI intro text to reflect Phase 1 provider abstraction readiness.
+- Clarified README setup paths for pipx package installs vs local editable development installs, including provider dependency and API-key steps.
+- Reduced provider error noise in chat by surfacing a single fallback reason line instead of repeated backend banners.
 
 ### Fixed
 - Ensured chat remains functional without remote SDKs by automatically falling back to local provider behavior.
+- Suppressed repetitive LiteLLM stdout/stderr debug banners during failed provider attempts.
+- Made config test assertions provider-agnostic so local config changes (e.g., anthropic) do not fail the suite.
 
 ## [0.1.2] - 2026-02-18
 ### Added

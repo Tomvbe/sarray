@@ -1,12 +1,12 @@
 [provider]
-name = "openai"
-fallbacks = ["anthropic", "gemini", "local"]
-default_model = "gpt-4.1"
+name = "anthropic"
+fallbacks = ["openai", "gemini", "local"]
+default_model = "claude-sonnet-4-6"
 temperature = 0.2
 request_timeout_seconds = 30
 
 [provider.role_models]
-analyst = "gpt-4.1"
+analyst = "claude-sonnet-4-6"
 planner = "gpt-4.1-mini"
 architect = "gpt-4.1"
 implementer = "gpt-4.1"

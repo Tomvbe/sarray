@@ -160,9 +160,16 @@ def _handle_turn(
         f"{ui.c('│', Ui.MAGENTA)} "
         f"{ui.c('[provider]', Ui.DIM)} {analyst_response.provider}/{analyst_response.model}"
     )
+    reason_line = ""
+    if analyst_response.fallback_reason:
+        reason_line = (
+            f"{ui.c('│', Ui.MAGENTA)} "
+            f"{ui.c('[fallback]', Ui.DIM)} {analyst_response.fallback_reason}\n"
+        )
     print(
         f"{ui.c('┌─ Analyst', Ui.BOLD, Ui.MAGENTA)}\n"
         f"{provider_line}\n"
+        f"{reason_line}"
         f"{ui.c('│', Ui.MAGENTA)} {analyst_response.content}\n"
         f"{ui.c('└────────', Ui.MAGENTA)}"
     )

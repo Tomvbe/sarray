@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import contextlib
 from dataclasses import dataclass
+import io
 from typing import Any
 
 
@@ -95,6 +97,12 @@ class LiteLLMProvider(ModelProvider):
             return model
         return f"{self.name}/{model}"
 
+    def _call_completion(self, **kwargs: Any) -> Any:
+        # LiteLLM can print noisy debug/help banners to stdout/stderr on errors.
+        # Suppress those so CLI output stays readable and we control error surfacing.
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            return self._litellm.completion(**kwargs)
+
     def chat(
         self,
         messages: list[ChatMessage],
@@ -104,7 +112,7 @@ class LiteLLMProvider(ModelProvider):
         timeout_seconds: float,
     ) -> str:
         try:
-            response = self._litellm.completion(
+            response = self._call_completion(
                 model=self._qualified_model(model),
                 messages=[{"role": m.role, "content": m.content} for m in messages],
                 temperature=temperature,
@@ -128,7 +136,7 @@ class LiteLLMProvider(ModelProvider):
         timeout_seconds: float,
     ) -> dict[str, Any]:
         try:
-            response = self._litellm.completion(
+            response = self._call_completion(
                 model=self._qualified_model(model),
                 messages=[{"role": m.role, "content": m.content} for m in messages],
                 temperature=temperature,

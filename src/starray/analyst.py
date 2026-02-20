@@ -18,6 +18,7 @@ class AnalystResponse:
     provider: str
     model: str
     fallback_used: bool
+    fallback_reason: str | None = None
 
 
 class AnalystRuntime:
@@ -64,6 +65,7 @@ class AnalystRuntime:
                         provider=provider_name,
                         model=model,
                         fallback_used=provider_name != self._cfg.provider or model != models[0],
+                        fallback_reason=(provider_errors[0] if provider_errors else None),
                     )
                 except ProviderError as exc:
                     provider_errors.append(f"{provider_name}:{model}: {exc}")
@@ -77,6 +79,7 @@ class AnalystRuntime:
             provider="none",
             model="none",
             fallback_used=True,
+            fallback_reason=(provider_errors[0] if provider_errors else None),
         )
 
     def provider_summary(self) -> str:
